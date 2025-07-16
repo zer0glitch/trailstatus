@@ -12,8 +12,8 @@ if (isLoggedIn()) {
 
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = $_POST['password'] ?? '';
+    $username = isset($_POST['username']) ? trim($_POST['username']) : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
     
     if (empty($username) || empty($password)) {
         $error = 'Please enter both username and password.';
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label for="username">Username:</label>
                         <input type="text" id="username" name="username" required 
-                               value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>">
+                               value="<?php echo htmlspecialchars(isset($_POST['username']) ? $_POST['username'] : ''); ?>">
                     </div>
                     
                     <div class="form-group">

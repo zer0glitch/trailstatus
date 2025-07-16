@@ -9,13 +9,14 @@ $success = '';
 
 // Handle trail status updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
+    $action = isset($_POST['action']) ? $_POST['action'] : '';
     
     if ($action === 'update_status') {
-        $trail_id = (int)($_POST['trail_id'] ?? 0);
-        $new_status = $_POST['status'] ?? '';
+        $trail_id = isset($_POST['trail_id']) ? (int)$_POST['trail_id'] : 0;
+        $new_status = isset($_POST['status']) ? $_POST['status'] : '';
         
-        if ($trail_id > 0 && in_array($new_status, [STATUS_OPEN, STATUS_CAUTION, STATUS_CLOSED])) {
+        $valid_statuses = array(STATUS_OPEN, STATUS_CAUTION, STATUS_CLOSED);
+        if ($trail_id > 0 && in_array($new_status, $valid_statuses)) {
             $trails = loadJsonData(TRAILS_FILE);
             $trail_found = false;
             
@@ -38,10 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Invalid trail or status data.';
         }
     } elseif ($action === 'add_trail') {
-        $trail_name = trim($_POST['trail_name'] ?? '');
-        $trail_status = $_POST['trail_status'] ?? STATUS_OPEN;
+        $trail_name = isset($_POST['trail_name']) ? trim($_POST['trail_name']) : '';
+        $trail_status = isset($_POST['trail_status']) ? $_POST['trail_status'] : STATUS_OPEN;
         
-        if (!empty($trail_name) && in_array($trail_status, [STATUS_OPEN, STATUS_CAUTION, STATUS_CLOSED])) {
+        $valid_statuses = array(STATUS_OPEN, STATUS_CAUTION, STATUS_CLOSED);
+        if (!empty($trail_name) && in_array($trail_status, $valid_statuses)) {
             $trails = loadJsonData(TRAILS_FILE);
             
             // Generate new ID
@@ -52,13 +54,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
-            $new_trail = [
+            $new_trail = array(
                 'id' => $max_id + 1,
                 'name' => $trail_name,
                 'status' => $trail_status,
                 'updated_at' => date('Y-m-d H:i:s'),
                 'updated_by' => $_SESSION['username']
-            ];
+            );
             
             $trails[] = $new_trail;
             
@@ -71,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Please enter a valid trail name.';
         }
     } elseif ($action === 'delete_trail') {
-        $trail_id = (int)($_POST['trail_id'] ?? 0);
+        $trail_id = isset($_POST['trail_id']) ? (int)$_POST['trail_id'] : 0;
         
         if ($trail_id > 0) {
             $trails = loadJsonData(TRAILS_FILE);

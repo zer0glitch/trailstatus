@@ -75,12 +75,12 @@ switch (strtolower($action)) {
         }
         
         // Add new user
-        $newUser = [
+        $newUser = array(
             'id' => $maxId + 1,
             'username' => $username,
             'password' => password_hash($password, PASSWORD_DEFAULT),
             'created_at' => date('Y-m-d H:i:s')
-        ];
+        );
         
         $users[] = $newUser;
         

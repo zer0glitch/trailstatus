@@ -145,7 +145,7 @@ function set_permissions() {
         output("  ⚠ Could not set data directory permissions", $is_cli);
     }
     
-    $files = ['users.json', 'trails.json'];
+    $files = array('users.json', 'trails.json');
     foreach ($files as $file) {
         $filepath = $data_dir . $file;
         if (file_exists($filepath)) {
