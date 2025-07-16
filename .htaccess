@@ -1,27 +1,14 @@
-# LCFTF Trail Status - Apache Configuration
+# Minimal .htaccess for maximum compatibility
 
-# Enable rewrite engine
-RewriteEngine On
-
-# Security: Prevent access to sensitive files
+# Prevent access to data files
 <Files "*.json">
     Require all denied
 </Files>
 
+# Prevent access to config files
 <Files "config.php">
     Require all denied
 </Files>
 
-<Files "add_user.php">
-    Require all denied
-</Files>
-
-<Files "setup.php">
-    Require all denied
-</Files>
-
-# Security: Prevent directory browsing
+# Disable directory browsing
 Options -Indexes
-
-# Error pages (adjust paths as needed)
-ErrorDocument 404 /trailstatus/404.php
