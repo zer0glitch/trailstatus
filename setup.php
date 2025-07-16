@@ -28,12 +28,12 @@ function output($message, $is_cli = false) {
 
 function check_requirements() {
     global $is_cli;
-    $requirements = [
-        'PHP Version >= 7.4' => version_compare(PHP_VERSION, '7.4.0', '>='),
+    $requirements = array(
+        'PHP Version >= 5.4' => version_compare(PHP_VERSION, '5.4.0', '>='),
         'JSON Extension' => extension_loaded('json'),
         'Session Support' => function_exists('session_start'),
         'File System Write Access' => is_writable(__DIR__)
-    ];
+    );
     
     $all_good = true;
     output("Checking requirements:", $is_cli);
