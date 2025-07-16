@@ -4,6 +4,41 @@
  * Run this from the web browser to diagnose issues
  */
 
+// PHP 5.4 compatibility for password functions
+if (!function_exists('password_hash')) {
+    define('PASSWORD_DEFAULT', 1);
+    
+    function password_hash($password, $algo, $options = array()) {
+        // Use bcrypt-like hashing for PHP 5.4
+        $cost = isset($options['cost']) ? $options['cost'] : 10;
+        $salt = '';
+        
+        // Generate a random salt
+        for ($i = 0; $i < 22; $i++) {
+            $salt .= chr(rand(33, 126));
+        }
+        
+        // Create a simple hash (for PHP 5.4 compatibility)
+        return '$2y$' . sprintf('%02d', $cost) . '$' . base64_encode($salt . hash('sha256', $salt . $password));
+    }
+    
+    function password_verify($password, $hash) {
+        // Extract salt from hash and verify
+        if (strlen($hash) < 60) return false;
+        
+        $parts = explode('$', $hash);
+        if (count($parts) < 4) return false;
+        
+        $stored_hash = base64_decode($parts[3]);
+        if (strlen($stored_hash) < 22) return false;
+        
+        $salt = substr($stored_hash, 0, 22);
+        $stored_password_hash = substr($stored_hash, 22);
+        
+        return hash('sha256', $salt . $password) === $stored_password_hash;
+    }
+}
+
 echo "<!DOCTYPE html><html><head><title>LCFTF Trail Status - Environment Test</title>";
 echo "<style>body{font-family:Arial,sans-serif;max-width:800px;margin:50px auto;padding:20px;}</style></head><body>";
 echo "<h1>🚵‍♂️ LCFTF Trail Status - Environment Test</h1>";

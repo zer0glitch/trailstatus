@@ -4,6 +4,41 @@
  * Run this once to set up the initial configuration
  */
 
+// PHP 5.4 compatibility for password functions
+if (!function_exists('password_hash')) {
+    define('PASSWORD_DEFAULT', 1);
+    
+    function password_hash($password, $algo, $options = array()) {
+        // Use bcrypt-like hashing for PHP 5.4
+        $cost = isset($options['cost']) ? $options['cost'] : 10;
+        $salt = '';
+        
+        // Generate a random salt
+        for ($i = 0; $i < 22; $i++) {
+            $salt .= chr(rand(33, 126));
+        }
+        
+        // Create a simple hash (for PHP 5.4 compatibility)
+        return '$2y$' . sprintf('%02d', $cost) . '$' . base64_encode($salt . hash('sha256', $salt . $password));
+    }
+    
+    function password_verify($password, $hash) {
+        // Extract salt from hash and verify
+        if (strlen($hash) < 60) return false;
+        
+        $parts = explode('$', $hash);
+        if (count($parts) < 4) return false;
+        
+        $stored_hash = base64_decode($parts[3]);
+        if (strlen($stored_hash) < 22) return false;
+        
+        $salt = substr($stored_hash, 0, 22);
+        $stored_password_hash = substr($stored_hash, 22);
+        
+        return hash('sha256', $salt . $password) === $stored_password_hash;
+    }
+}
+
 // Check if running from command line or web
 $is_cli = php_sapi_name() === 'cli';
 
@@ -76,14 +111,14 @@ function create_default_data() {
     
     // Default users
     if (!file_exists($users_file)) {
-        $default_users = [
-            [
+        $default_users = array(
+            array(
                 'id' => 1,
                 'username' => 'admin',
                 'password' => password_hash('admin123', PASSWORD_DEFAULT),
                 'created_at' => date('Y-m-d H:i:s')
-            ]
-        ];
+            )
+        );
         
         if (file_put_contents($users_file, json_encode($default_users, JSON_PRETTY_PRINT))) {
             output("  ✓ Created users.json", $is_cli);
@@ -97,29 +132,29 @@ function create_default_data() {
     
     // Default trails
     if (!file_exists($trails_file)) {
-        $default_trails = [
-            [
+        $default_trails = array(
+            array(
                 'id' => 1,
                 'name' => 'Blue Trail',
                 'status' => 'open',
                 'updated_at' => date('Y-m-d H:i:s'),
                 'updated_by' => 'System'
-            ],
-            [
+            ),
+            array(
                 'id' => 2,
                 'name' => 'Red Trail',
                 'status' => 'caution',
                 'updated_at' => date('Y-m-d H:i:s'),
                 'updated_by' => 'System'
-            ],
-            [
+            ),
+            array(
                 'id' => 3,
                 'name' => 'Black Diamond',
                 'status' => 'closed',
                 'updated_at' => date('Y-m-d H:i:s'),
                 'updated_by' => 'System'
-            ]
-        ];
+            )
+        );
         
         if (file_put_contents($trails_file, json_encode($default_trails, JSON_PRETTY_PRINT))) {
             output("  ✓ Created trails.json", $is_cli);
