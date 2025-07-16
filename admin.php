@@ -106,8 +106,13 @@ $trails = loadJsonData(TRAILS_FILE);
 <body>
     <div class="container">
         <header class="header">
-            <h1>🚵‍♂️ LCFTF Trail Status</h1>
-            <p>Administrator Panel</p>
+            <div class="header-logo">
+                <img src="https://www.zeroglitch.com/trailstatus/images/ftf_logo.jpg" alt="FTF Logo" />
+                <div>
+                    <h1>🚵‍♂️ LCFTF Trail Status</h1>
+                    <p>Administrator Panel</p>
+                </div>
+            </div>
         </header>
 
         <nav class="nav">

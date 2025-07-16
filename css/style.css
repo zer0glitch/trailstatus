@@ -1,4 +1,19 @@
-/* Mountain Bike Club Trail Status - CSS Styles */
+/* Mountain Bike Club Trail Status - CSS Styles with FTF Logo Theme */
+
+:root {
+    /* FTF Logo Color Palette */
+    --ftf-primary: #8B4513;      /* Saddle Brown from logo */
+    --ftf-secondary: #228B22;    /* Forest Green from logo */
+    --ftf-accent: #FF8C00;       /* Dark Orange from logo */
+    --ftf-earth: #D2B48C;        /* Tan from logo */
+    --ftf-dark: #2F1B14;         /* Dark Brown */
+    --ftf-light: #F5F5DC;        /* Beige */
+    
+    /* Trail Status Colors */
+    --status-open: #228B22;      /* Forest Green */
+    --status-caution: #FF8C00;   /* Dark Orange */
+    --status-closed: #DC143C;    /* Crimson Red */
+}
 
 * {
     margin: 0;
@@ -9,9 +24,9 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--ftf-earth) 0%, var(--ftf-primary) 50%, var(--ftf-secondary) 100%);
     min-height: 100vh;
-    color: #333;
+    color: var(--ftf-dark);
 }
 
 .container {
@@ -20,7 +35,7 @@ body {
     padding: 20px;
 }
 
-/* Header */
+/* Header with Logo */
 .header {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
@@ -29,18 +44,37 @@ body {
     margin-bottom: 30px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     text-align: center;
+    border: 2px solid var(--ftf-earth);
+}
+
+.header-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.header-logo img {
+    max-height: 80px;
+    width: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .header h1 {
-    color: #2c3e50;
+    color: var(--ftf-primary);
     font-size: 2.5rem;
     margin-bottom: 10px;
     font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .header p {
-    color: #666;
+    color: var(--ftf-secondary);
     font-size: 1.1rem;
+    font-weight: 500;
 }
 
 /* Navigation */
@@ -51,6 +85,7 @@ body {
     padding: 15px;
     margin-bottom: 20px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--ftf-earth);
 }
 
 .nav ul {
@@ -62,19 +97,21 @@ body {
 }
 
 .nav a {
-    color: #2c3e50;
+    color: var(--ftf-primary);
     text-decoration: none;
     padding: 10px 20px;
     border-radius: 8px;
     transition: all 0.3s ease;
     font-weight: 500;
+    border: 1px solid transparent;
 }
 
 .nav a:hover,
 .nav a.active {
-    background: #3498db;
+    background: var(--ftf-secondary);
     color: white;
     transform: translateY(-2px);
+    border-color: var(--ftf-primary);
 }
 
 /* Trail Status Grid */
@@ -103,7 +140,7 @@ body {
     font-size: 1.4rem;
     font-weight: 600;
     margin-bottom: 15px;
-    color: #2c3e50;
+    color: var(--ftf-primary);
 }
 
 .trail-status {
@@ -115,25 +152,27 @@ body {
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .status-open {
-    background: #28a745;
+    background: var(--status-open);
 }
 
 .status-caution {
-    background: #ffc107;
-    color: #333;
+    background: var(--status-caution);
+    color: white;
 }
 
 .status-closed {
-    background: #dc3545;
+    background: var(--status-closed);
 }
 
 .trail-meta {
     margin-top: 15px;
     font-size: 0.85rem;
-    color: #666;
+    color: var(--ftf-secondary);
+    font-weight: 500;
 }
 
 /* Forms */
@@ -155,23 +194,25 @@ body {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--ftf-primary);
 }
 
 .form-group input,
 .form-group select {
     width: 100%;
     padding: 12px;
-    border: 2px solid #e1e8ed;
+    border: 2px solid var(--ftf-earth);
     border-radius: 8px;
     font-size: 1rem;
     transition: border-color 0.3s ease;
+    background: var(--ftf-light);
 }
 
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: var(--ftf-secondary);
+    box-shadow: 0 0 0 3px rgba(34, 139, 34, 0.1);
 }
 
 /* Buttons */
@@ -189,27 +230,28 @@ body {
 }
 
 .btn-primary {
-    background: #3498db;
+    background: var(--ftf-secondary);
     color: white;
+    border: 1px solid var(--ftf-primary);
 }
 
 .btn-primary:hover {
-    background: #2980b9;
+    background: var(--ftf-primary);
     transform: translateY(-2px);
 }
 
 .btn-success {
-    background: #28a745;
+    background: var(--status-open);
     color: white;
 }
 
 .btn-success:hover {
-    background: #218838;
+    background: #1e7e1e;
     transform: translateY(-2px);
 }
 
 .btn-danger {
-    background: #dc3545;
+    background: var(--status-closed);
     color: white;
 }
 
@@ -219,14 +261,14 @@ body {
 }
 
 .btn-logout {
-    background: #6c757d;
+    background: var(--ftf-primary);
     color: white;
     font-size: 0.9rem;
     padding: 8px 16px;
 }
 
 .btn-logout:hover {
-    background: #5a6268;
+    background: var(--ftf-dark);
 }
 
 /* Messages */
@@ -269,7 +311,7 @@ body {
 }
 
 .admin-header h2 {
-    color: #2c3e50;
+    color: var(--ftf-primary);
     font-size: 1.8rem;
 }
 
@@ -291,13 +333,13 @@ body {
 }
 
 .trail-table th {
-    background: #f8f9fa;
+    background: var(--ftf-earth);
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--ftf-dark);
 }
 
 .trail-table tr:hover {
-    background: #f8f9fa;
+    background: var(--ftf-light);
 }
 
 /* Footer */

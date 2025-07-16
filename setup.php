@@ -135,21 +135,21 @@ function create_default_data() {
         $default_trails = array(
             array(
                 'id' => 1,
-                'name' => 'Blue Trail',
+                'name' => 'Marrington Plantation',
                 'status' => 'open',
                 'updated_at' => date('Y-m-d H:i:s'),
                 'updated_by' => 'System'
             ),
             array(
                 'id' => 2,
-                'name' => 'Red Trail',
+                'name' => 'Wannamaker North Trail',
                 'status' => 'caution',
                 'updated_at' => date('Y-m-d H:i:s'),
                 'updated_by' => 'System'
             ),
             array(
                 'id' => 3,
-                'name' => 'Black Diamond',
+                'name' => 'Biggin Creek',
                 'status' => 'closed',
                 'updated_at' => date('Y-m-d H:i:s'),
                 'updated_by' => 'System'

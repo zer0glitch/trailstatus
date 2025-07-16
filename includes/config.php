@@ -51,11 +51,11 @@ define('STATUS_OPEN', 'open');
 define('STATUS_CAUTION', 'caution');
 define('STATUS_CLOSED', 'closed');
 
-// Status colors
+// Status colors (matching FTF theme)
 $status_colors = array(
-    STATUS_OPEN => '#28a745',
-    STATUS_CAUTION => '#ffc107',
-    STATUS_CLOSED => '#dc3545'
+    STATUS_OPEN => '#228B22',     // Forest Green
+    STATUS_CAUTION => '#FF8C00',  // Dark Orange  
+    STATUS_CLOSED => '#DC143C'    // Crimson Red
 );
 
 // Status labels
@@ -97,21 +97,21 @@ if (!file_exists(TRAILS_FILE)) {
     $default_trails = array(
         array(
             'id' => 1,
-            'name' => 'Blue Trail',
+            'name' => 'Marrington Plantation',
             'status' => STATUS_OPEN,
             'updated_at' => date('Y-m-d H:i:s'),
             'updated_by' => 'System'
         ),
         array(
             'id' => 2,
-            'name' => 'Red Trail',
+            'name' => 'Wannamaker North Trail',
             'status' => STATUS_CAUTION,
             'updated_at' => date('Y-m-d H:i:s'),
             'updated_by' => 'System'
         ),
         array(
             'id' => 3,
-            'name' => 'Black Diamond',
+            'name' => 'Biggin Creek',
             'status' => STATUS_CLOSED,
             'updated_at' => date('Y-m-d H:i:s'),
             'updated_by' => 'System'

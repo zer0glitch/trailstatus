@@ -14,8 +14,13 @@ $trails = loadJsonData(TRAILS_FILE);
 <body>
     <div class="container">
         <header class="header">
-            <h1>🚵‍♂️ LCFTF Trail Status</h1>
-            <p>Live mountain bike trail conditions and updates</p>
+            <div class="header-logo">
+                <img src="https://www.zeroglitch.com/trailstatus/images/ftf_logo.jpg" alt="FTF Logo" />
+                <div>
+                    <h1>🚵‍♂️ LCFTF Trail Status</h1>
+                    <p>Live mountain bike trail conditions and updates</p>
+                </div>
+            </div>
         </header>
 
         <nav class="nav">
@@ -54,19 +59,19 @@ $trails = loadJsonData(TRAILS_FILE);
             <?php endif; ?>
             
             <div class="form-container" style="margin-top: 30px;">
-                <h3>Trail Status Legend</h3>
+                <h3 style="color: var(--ftf-primary);">Trail Status Legend</h3>
                 <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 15px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div class="trail-status status-open" style="font-size: 0.8rem; padding: 4px 12px;">Open</div>
-                        <span>Trail is in good condition</span>
+                        <span style="color: var(--ftf-secondary);">Trail is in good condition</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div class="trail-status status-caution" style="font-size: 0.8rem; padding: 4px 12px;">Caution</div>
-                        <span>Use caution, conditions may vary</span>
+                        <span style="color: var(--ftf-secondary);">Use caution, conditions may vary</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div class="trail-status status-closed" style="font-size: 0.8rem; padding: 4px 12px;">Closed</div>
-                        <span>Trail is closed to riders</span>
+                        <span style="color: var(--ftf-secondary);">Trail is closed to riders</span>
                     </div>
                 </div>
             </div>
