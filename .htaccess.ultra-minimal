@@ -1,0 +1,4 @@
+# Ultra-minimal .htaccess for maximum compatibility
+
+# Disable directory browsing only
+Options -Indexes

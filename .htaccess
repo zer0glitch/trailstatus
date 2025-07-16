@@ -1,27 +1,2 @@
-# Compatible .htaccess for Apache 2.4+ and older versions
-
-# Prevent access to data files
-<Files "*.json">
-    Order Deny,Allow
-    Deny from all
-</Files>
-
-# Prevent access to config files  
-<Files "config.php">
-    Order Deny,Allow
-    Deny from all
-</Files>
-
-# Prevent access to setup and user management files
-<Files "setup.php">
-    Order Deny,Allow
-    Deny from all
-</Files>
-
-<Files "add_user.php">
-    Order Deny,Allow
-    Deny from all
-</Files>
-
-# Disable directory browsing
+# Ultra-minimal .htaccess for very restricted Apache environments
 Options -Indexes
