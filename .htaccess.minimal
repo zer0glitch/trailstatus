@@ -1,0 +1,14 @@
+# Minimal .htaccess for maximum compatibility
+
+# Prevent access to data files
+<Files "*.json">
+    Require all denied
+</Files>
+
+# Prevent access to config files
+<Files "config.php">
+    Require all denied
+</Files>
+
+# Disable directory browsing
+Options -Indexes
