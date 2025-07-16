@@ -58,20 +58,35 @@ $trails = loadJsonData(TRAILS_FILE);
                 </div>
             <?php endif; ?>
             
-            <div class="form-container" style="margin-top: 30px;">
-                <h3 style="color: var(--ftf-primary);">Trail Status Legend</h3>
-                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 15px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div class="trail-status status-open" style="font-size: 0.8rem; padding: 4px 12px;">Open</div>
-                        <span style="color: var(--ftf-secondary);">Trail is in good condition</span>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px;">
+                <!-- Trail Status Legend -->
+                <div class="form-container">
+                    <h3 style="color: var(--ftf-primary);">Trail Status Legend</h3>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="trail-status status-open" style="font-size: 0.8rem; padding: 4px 12px;">Open</div>
+                            <span style="color: var(--ftf-secondary);">Trail is in good condition</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="trail-status status-caution" style="font-size: 0.8rem; padding: 4px 12px;">Caution</div>
+                            <span style="color: var(--ftf-secondary);">Use caution, conditions may vary</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="trail-status status-closed" style="font-size: 0.8rem; padding: 4px 12px;">Closed</div>
+                            <span style="color: var(--ftf-secondary);">Trail is closed to riders</span>
+                        </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div class="trail-status status-caution" style="font-size: 0.8rem; padding: 4px 12px;">Caution</div>
-                        <span style="color: var(--ftf-secondary);">Use caution, conditions may vary</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div class="trail-status status-closed" style="font-size: 0.8rem; padding: 4px 12px;">Closed</div>
-                        <span style="color: var(--ftf-secondary);">Trail is closed to riders</span>
+                </div>
+                
+                <!-- Wet Trail Policy -->
+                <div class="form-container">
+                    <h3 style="color: var(--ftf-primary);">🌧️ Wet Trail Policy</h3>
+                    <div style="margin-top: 15px; color: var(--ftf-secondary); line-height: 1.6;">
+                        <p style="margin-bottom: 10px;"><strong>Do not ride any trail for a minimum 24 hours after a significant rain event.</strong></p>
+                        <p style="font-size: 0.9rem;">If you encounter water on the trail, ride through it, not around it.</p>
+                        <div style="background: var(--ftf-light); padding: 10px; border-radius: 5px; margin-top: 10px; border-left: 4px solid var(--ftf-accent);">
+                            <small style="color: var(--ftf-primary);">Help preserve our trails for everyone by following this policy!</small>
+                        </div>
                     </div>
                 </div>
             </div>

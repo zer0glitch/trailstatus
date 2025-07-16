@@ -39,6 +39,9 @@ if (!function_exists('password_hash')) {
     }
 }
 
+// Set timezone to Eastern Time
+date_default_timezone_set('America/New_York');
+
 // Check if running from command line or web
 $is_cli = php_sapi_name() === 'cli';
 

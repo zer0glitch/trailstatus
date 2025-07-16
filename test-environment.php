@@ -39,6 +39,9 @@ if (!function_exists('password_hash')) {
     }
 }
 
+// Set timezone to Eastern Time
+date_default_timezone_set('America/New_York');
+
 echo "<!DOCTYPE html><html><head><title>LCFTF Trail Status - Environment Test</title>";
 echo "<style>body{font-family:Arial,sans-serif;max-width:800px;margin:50px auto;padding:20px;}</style></head><body>";
 echo "<h1>🚵‍♂️ LCFTF Trail Status - Environment Test</h1>";

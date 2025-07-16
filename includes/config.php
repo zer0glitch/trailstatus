@@ -36,6 +36,9 @@ if (!function_exists('password_hash')) {
     }
 }
 
+// Set timezone to Eastern Time
+date_default_timezone_set('America/New_York');
+
 // Configuration settings
 define('DATA_DIR', __DIR__ . '/../data/');
 define('USERS_FILE', DATA_DIR . 'users.json');
