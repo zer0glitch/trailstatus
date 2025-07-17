@@ -9,6 +9,10 @@ define('ENABLE_NOTIFICATIONS', true);
 define('NOTIFICATION_FROM_EMAIL', 'noreply@zeroglitch.com');
 define('NOTIFICATION_FROM_NAME', 'LCFTF Trail Status');
 
+// Feature toggles - Control what notification methods are available
+define('ENABLE_EMAIL_SUBSCRIPTIONS', false);  // Set to true when SMTP is configured
+define('ENABLE_PUSH_NOTIFICATIONS', true);   // Enable push notifications
+
 // SMTP Configuration - Update these with your hosting provider's SMTP settings
 define('SMTP_ENABLED', true);  // Set to false to use basic mail() function
 define('SMTP_HOST', 'mail.zeroglitch.com');  // Your hosting provider's SMTP server
@@ -17,6 +21,12 @@ define('SMTP_SECURE', 'tls');  // 'tls', 'ssl', or false for no encryption
 define('SMTP_AUTH', true);  // Set to true if authentication is required
 define('SMTP_USERNAME', 'noreply@zeroglitch.com');  // Your SMTP username
 define('SMTP_PASSWORD', '');  // Your SMTP password - UPDATE THIS!
+
+// Push Notification Configuration
+define('PUSH_NOTIFICATIONS_ENABLED', true);
+define('VAPID_PUBLIC_KEY', '');  // Will be generated
+define('VAPID_PRIVATE_KEY', ''); // Will be generated
+define('VAPID_SUBJECT', 'mailto:noreply@zeroglitch.com');
 
 // Load notification subscribers
 function loadSubscribers() {
@@ -65,13 +75,15 @@ function addSubscriber($email, $name = '', $trails = array()) {
 // Remove a subscriber
 function removeSubscriber($email) {
     $subscribers = loadSubscribers();
-    $subscribers = array_filter($subscribers, function($subscriber) use ($email) {
-        return $subscriber['email'] !== $email;
-    });
+    $filtered_subscribers = array();
     
-    // Re-index array
-    $subscribers = array_values($subscribers);
-    return saveSubscribers($subscribers);
+    foreach ($subscribers as $subscriber) {
+        if ($subscriber['email'] !== $email) {
+            $filtered_subscribers[] = $subscriber;
+        }
+    }
+    
+    return saveSubscribers($filtered_subscribers);
 }
 
 // Send email notification with SMTP support
@@ -207,21 +219,168 @@ function notifyTrailStatusChange($trail_id, $trail_name, $old_status, $new_statu
         return;
     }
     
-    $subscribers = loadSubscribers();
-    $status_colors = array('open' => 'status-open', 'caution' => 'status-caution', 'closed' => 'status-closed');
-    
-    $subject = "Trail Status Change: {$trail_name} is now " . ucfirst($new_status);
-    
-    $message = "
-        <h3>Trail Status Update</h3>
-        <p><strong>Trail:</strong> {$trail_name}</p>
-        <p><strong>Previous Status:</strong> <span class='trail-status {$status_colors[$old_status]}'>" . ucfirst($old_status) . "</span></p>
-        <p><strong>New Status:</strong> <span class='trail-status {$status_colors[$new_status]}'>" . ucfirst($new_status) . "</span></p>
-        <p><strong>Updated by:</strong> {$updated_by}</p>
-        <p><strong>Updated at:</strong> " . date('M j, Y g:i A') . "</p>
+    // Send email notifications (if enabled and SMTP is configured)
+    if (ENABLE_EMAIL_SUBSCRIPTIONS && SMTP_AUTH && !empty(SMTP_PASSWORD)) {
+        $subscribers = loadSubscribers();
+        $status_colors = array('open' => 'status-open', 'caution' => 'status-caution', 'closed' => 'status-closed');
         
-        <p><a href='https://zeroglitch.com/trailstatus/' style='background: #228B22; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Trail Status</a></p>
-    ";
+        $subject = "Trail Status Change: {$trail_name} is now " . ucfirst($new_status);
+        
+        $message = "
+            <h3>Trail Status Update</h3>
+            <p><strong>Trail:</strong> {$trail_name}</p>
+            <p><strong>Previous Status:</strong> <span class='trail-status {$status_colors[$old_status]}'>" . ucfirst($old_status) . "</span></p>
+            <p><strong>New Status:</strong> <span class='trail-status {$status_colors[$new_status]}'>" . ucfirst($new_status) . "</span></p>
+            <p><strong>Updated by:</strong> {$updated_by}</p>
+            <p><strong>Updated at:</strong> " . date('M j, Y g:i A') . "</p>
+            
+            <p><a href='https://zeroglitch.com/trailstatus/' style='background: #228B22; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Trail Status</a></p>
+        ";
+        
+        foreach ($subscribers as $subscriber) {
+            if (!$subscriber['active']) continue;
+            
+            // Check if subscriber wants notifications for this trail
+            if (!in_array('all', $subscriber['trails']) && !in_array($trail_id, $subscriber['trails'])) {
+                continue;
+            }
+            
+            sendEmailNotification($subscriber['email'], $subscriber['name'], $subject, $message);
+        }
+    }
+    
+    // Send push notifications (if enabled)
+    if (ENABLE_PUSH_NOTIFICATIONS) {
+        notifyTrailStatusChangePush($trail_id, $trail_name, $old_status, $new_status, $updated_by);
+    }
+}
+
+// Initialize default subscribers file if it doesn't exist
+$subscribers_file = DATA_DIR . 'subscribers.json';
+if (!file_exists($subscribers_file)) {
+    $default_subscribers = array();
+    saveJsonData($subscribers_file, $default_subscribers);
+}
+
+// Push Notification Functions
+
+// Load push notification subscribers
+function loadPushSubscribers() {
+    $push_subscribers_file = DATA_DIR . 'push_subscribers.json';
+    return loadJsonData($push_subscribers_file);
+}
+
+// Save push notification subscribers
+function savePushSubscribers($subscribers) {
+    $push_subscribers_file = DATA_DIR . 'push_subscribers.json';
+    return saveJsonData($push_subscribers_file, $subscribers);
+}
+
+// Add a new push notification subscriber
+function addPushSubscriber($endpoint, $p256dh_key, $auth_key, $user_agent = '', $trails = array()) {
+    $subscribers = loadPushSubscribers();
+    
+    // Check if endpoint already exists
+    foreach ($subscribers as $subscriber) {
+        if ($subscriber['endpoint'] === $endpoint) {
+            return false; // Already subscribed
+        }
+    }
+    
+    // Generate new ID
+    $max_id = 0;
+    foreach ($subscribers as $subscriber) {
+        if ($subscriber['id'] > $max_id) {
+            $max_id = $subscriber['id'];
+        }
+    }
+    
+    $new_subscriber = array(
+        'id' => $max_id + 1,
+        'endpoint' => $endpoint,
+        'p256dh' => $p256dh_key,
+        'auth' => $auth_key,
+        'user_agent' => $user_agent,
+        'trails' => empty($trails) ? array('all') : $trails,
+        'created_at' => date('Y-m-d H:i:s'),
+        'active' => true
+    );
+    
+    $subscribers[] = $new_subscriber;
+    return savePushSubscribers($subscribers);
+}
+
+// Remove a push notification subscriber
+function removePushSubscriber($endpoint) {
+    $subscribers = loadPushSubscribers();
+    $filtered_subscribers = array();
+    
+    foreach ($subscribers as $subscriber) {
+        if ($subscriber['endpoint'] !== $endpoint) {
+            $filtered_subscribers[] = $subscriber;
+        }
+    }
+    
+    return savePushSubscribers($filtered_subscribers);
+}
+
+// Send push notification (basic implementation)
+function sendPushNotification($endpoint, $p256dh, $auth, $payload) {
+    // For a full implementation, you would use a library like web-push-php
+    // This is a simplified version for demonstration
+    
+    $headers = array(
+        'Content-Type: application/json',
+        'TTL: 86400' // 24 hours
+    );
+    
+    $data = json_encode(array(
+        'title' => $payload['title'],
+        'body' => $payload['body'],
+        'icon' => $payload['icon'],
+        'badge' => $payload['badge'],
+        'data' => $payload['data']
+    ));
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $endpoint);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    
+    $result = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    return $http_code >= 200 && $http_code < 300;
+}
+
+// Send push notifications for trail status change
+function notifyTrailStatusChangePush($trail_id, $trail_name, $old_status, $new_status, $updated_by) {
+    if (!ENABLE_PUSH_NOTIFICATIONS) {
+        return;
+    }
+    
+    $subscribers = loadPushSubscribers();
+    
+    $payload = array(
+        'title' => 'Trail Status Change',
+        'body' => "{$trail_name} is now " . ucfirst($new_status),
+        'icon' => '/images/ftf_logo.jpg',
+        'badge' => '/images/ftf_logo.jpg',
+        'data' => array(
+            'trail_id' => $trail_id,
+            'trail_name' => $trail_name,
+            'old_status' => $old_status,
+            'new_status' => $new_status,
+            'updated_by' => $updated_by,
+            'updated_at' => date('Y-m-d H:i:s'),
+            'url' => 'https://zeroglitch.com/trailstatus/'
+        )
+    );
     
     foreach ($subscribers as $subscriber) {
         if (!$subscriber['active']) continue;
@@ -231,14 +390,14 @@ function notifyTrailStatusChange($trail_id, $trail_name, $old_status, $new_statu
             continue;
         }
         
-        sendEmailNotification($subscriber['email'], $subscriber['name'], $subject, $message);
+        sendPushNotification($subscriber['endpoint'], $subscriber['p256dh'], $subscriber['auth'], $payload);
     }
 }
 
-// Initialize default subscribers file if it doesn't exist
-$subscribers_file = DATA_DIR . 'subscribers.json';
-if (!file_exists($subscribers_file)) {
-    $default_subscribers = array();
-    saveJsonData($subscribers_file, $default_subscribers);
+// Initialize default push subscribers file if it doesn't exist
+$push_subscribers_file = DATA_DIR . 'push_subscribers.json';
+if (!file_exists($push_subscribers_file)) {
+    $default_push_subscribers = array();
+    saveJsonData($push_subscribers_file, $default_push_subscribers);
 }
 ?>
