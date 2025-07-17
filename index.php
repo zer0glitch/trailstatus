@@ -26,6 +26,7 @@ $trails = loadJsonData(TRAILS_FILE);
         <nav class="nav">
             <ul>
                 <li><a href="index.php" class="active">Trail Status</a></li>
+                <li><a href="notifications.php">Notifications</a></li>
                 <?php if (isLoggedIn()): ?>
                     <li><a href="admin.php">Admin Panel</a></li>
                     <li><a href="logout.php" class="btn-logout">Logout (<?php echo htmlspecialchars($_SESSION['username']); ?>)</a></li>

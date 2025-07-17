@@ -50,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <nav class="nav">
             <ul>
                 <li><a href="index.php">Trail Status</a></li>
+                <li><a href="notifications.php">Notifications</a></li>
                 <li><a href="login.php" class="active">Admin Login</a></li>
             </ul>
         </nav>

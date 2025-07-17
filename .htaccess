@@ -1,2 +1,2 @@
 # Ultra-minimal .htaccess for very restricted Apache environments
-Options -Indexes
+#Options -Indexes
