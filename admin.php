@@ -113,6 +113,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Invalid subscriber email.';
         }
+    } elseif ($action === 'remove_push_subscriber') {
+        $subscriber_endpoint = isset($_POST['subscriber_endpoint']) ? trim($_POST['subscriber_endpoint']) : '';
+        
+        if (!empty($subscriber_endpoint)) {
+            if (removePushSubscriber($subscriber_endpoint)) {
+                $success = 'Push subscriber removed successfully!';
+            } else {
+                $error = 'Failed to remove push subscriber or subscriber not found.';
+            }
+        } else {
+            $error = 'Invalid subscriber endpoint.';
+        }
     }
 }
 
@@ -121,6 +133,9 @@ $trails = loadJsonData(TRAILS_FILE);
 
 // Load subscribers for management
 $subscribers = loadSubscribers();
+
+// Load push subscribers for management
+$push_subscribers = loadPushSubscribers();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -339,6 +354,102 @@ $subscribers = loadSubscribers();
                     </div>
                 <?php endif; ?>
             </div>
+
+            <!-- Push Notification Subscribers Management -->
+            <?php if (ENABLE_PUSH_NOTIFICATIONS): ?>
+            <div class="admin-panel">
+                <div class="admin-header">
+                    <h2>Push Notification Subscribers</h2>
+                    <div style="font-size: 0.9rem; color: #666;">
+                        Total Push Subscribers: <?php echo count($push_subscribers); ?>
+                    </div>
+                </div>
+
+                <?php if (empty($push_subscribers)): ?>
+                    <p>No push notification subscribers yet. Users can enable push notifications on the <a href="notifications.php">Notifications page</a>.</p>
+                <?php else: ?>
+                    <table class="trail-table">
+                        <thead>
+                            <tr>
+                                <th>Browser/Device</th>
+                                <th>Trail Preferences</th>
+                                <th>Subscribed Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($push_subscribers as $subscriber): ?>
+                                <tr>
+                                    <td>
+                                        <?php 
+                                        $ua = $subscriber['user_agent'];
+                                        if (strpos($ua, 'Chrome') !== false) {
+                                            echo '🟢 Chrome';
+                                        } elseif (strpos($ua, 'Firefox') !== false) {
+                                            echo '🟠 Firefox';
+                                        } elseif (strpos($ua, 'Safari') !== false) {
+                                            echo '🔵 Safari';
+                                        } elseif (strpos($ua, 'Edge') !== false) {
+                                            echo '🟣 Edge';
+                                        } else {
+                                            echo '📱 Unknown';
+                                        }
+                                        ?>
+                                        <br>
+                                        <small style="color: #666;">
+                                            <?php echo htmlspecialchars(substr($subscriber['endpoint'], -20)); ?>...
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <?php 
+                                        if (in_array('all', $subscriber['trails'])) {
+                                            echo '<span style="color: #228B22; font-weight: bold;">All Trails</span>';
+                                        } else {
+                                            $trail_names = array();
+                                            foreach ($subscriber['trails'] as $trail_id) {
+                                                foreach ($trails as $trail) {
+                                                    if ($trail['id'] == $trail_id) {
+                                                        $trail_names[] = $trail['name'];
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            echo htmlspecialchars(implode(', ', $trail_names));
+                                        }
+                                        ?>
+                                    </td>
+                                    <td><?php echo date('M j, Y', strtotime($subscriber['created_at'])); ?></td>
+                                    <td>
+                                        <span class="trail-status <?php echo $subscriber['active'] ? 'status-open' : 'status-closed'; ?>" style="font-size: 0.8rem; padding: 4px 12px;">
+                                            <?php echo $subscriber['active'] ? 'Active' : 'Inactive'; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="admin.php" style="display: inline-block;" 
+                                              onsubmit="return confirm('Are you sure you want to remove this push subscriber?');">
+                                            <input type="hidden" name="action" value="remove_push_subscriber">
+                                            <input type="hidden" name="subscriber_endpoint" value="<?php echo htmlspecialchars($subscriber['endpoint']); ?>">
+                                            <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;">Remove</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0; color: #333;">Push Notification Management:</h4>
+                        <ul style="margin: 0; padding-left: 20px; color: #666;">
+                            <li>Push subscribers receive instant notifications when trail statuses change</li>
+                            <li>Notifications work even when the browser is closed (on supported devices)</li>
+                            <li>Each subscription represents a browser/device combination</li>
+                            <li>Removing a subscription here will disable notifications for that device</li>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
         </main>
 
         <footer class="footer">
