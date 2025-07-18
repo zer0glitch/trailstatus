@@ -3,10 +3,11 @@
 
 const CACHE_NAME = 'lcftf-trail-status-v1';
 const urlsToCache = [
-    '/',
-    '/index.php',
-    '/css/style.css',
-    '/images/ftf_logo.jpg'
+    './index.php',
+    './css/style.css',
+    './images/ftf_logo.jpg',
+    './notifications.php',
+    './admin.php'
 ];
 
 // Install service worker and cache resources
@@ -36,15 +37,15 @@ self.addEventListener('push', function(event) {
     let notificationData = {
         title: 'Trail Status Update',
         body: 'A trail status has changed',
-        icon: '/images/ftf_logo.jpg',
-        badge: '/images/ftf_logo.jpg',
+        icon: './images/ftf_logo.jpg',
+        badge: './images/ftf_logo.jpg',
         tag: 'trail-status',
         requireInteraction: true,
         actions: [
             {
                 action: 'view',
                 title: 'View Status',
-                icon: '/images/ftf_logo.jpg'
+                icon: './images/ftf_logo.jpg'
             },
             {
                 action: 'close',

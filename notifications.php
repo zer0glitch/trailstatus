@@ -119,7 +119,7 @@ $trails = loadJsonData(TRAILS_FILE);
             // Enable push notifications
             document.getElementById('enable-push').addEventListener('click', async function() {
                 try {
-                    const registration = await navigator.serviceWorker.register('/sw.js');
+                    const registration = await navigator.serviceWorker.register('./sw.js');
                     const permission = await Notification.requestPermission();
                     
                     if (permission === 'granted') {
