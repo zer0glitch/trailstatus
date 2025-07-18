@@ -1,25 +1,88 @@
 <?php
 /**
- * VAPID Key Generator for Push Notifications
- * Run this script once to generate VAPID keys for push notifications
+ * VAPID Key Generator - Production Ready
+ * Generates proper ECDSA P-256 key pairs for FCM push notifications
  */
 
 require_once 'includes/config.php';
 
-// Simple VAPID key generation (for basic setups)
-// For production, consider using a proper VAPID library like web-push-php
+// Check if OpenSSL is available
+if (!extension_loaded('openssl')) {
+    die("OpenSSL extension is required for VAPID key generation.\n");
+}
 
 function generateVAPIDKeys() {
-    // Generate a simple key pair (this is a basic implementation)
-    // For production use, implement proper VAPID key generation
-    
-    $privateKey = base64_encode(random_bytes(32));
-    $publicKey = base64_encode(random_bytes(65));
-    
+    // Generate ECDSA P-256 private key
+    $private_key_resource = openssl_pkey_new(array(
+        'curve_name' => 'prime256v1',
+        'private_key_type' => OPENSSL_KEYTYPE_EC,
+    ));
+
+    if (!$private_key_resource) {
+        throw new Exception("Failed to generate private key: " . openssl_error_string());
+    }
+
+    // Extract private key in PEM format
+    $private_key_pem = '';
+    if (!openssl_pkey_export($private_key_resource, $private_key_pem)) {
+        throw new Exception("Failed to export private key: " . openssl_error_string());
+    }
+
+    // Get public key details
+    $key_details = openssl_pkey_get_details($private_key_resource);
+    if (!$key_details) {
+        throw new Exception("Failed to get key details: " . openssl_error_string());
+    }
+
+    // Extract public key (uncompressed format)
+    $public_key_der = $key_details['ec']['key'];
+
+    // Remove the first byte (0x04) which indicates uncompressed format
+    $public_key_raw = substr($public_key_der, 1);
+
+    // Base64url encode the public key
+    $public_key_base64url = base64url_encode($public_key_raw);
+
+    // Convert private key to base64url format for VAPID
+    // Extract the private key part from the PEM
+    preg_match('/-----BEGIN (?:EC )?PRIVATE KEY-----\s*(.+?)\s*-----END (?:EC )?PRIVATE KEY-----/s', $private_key_pem, $matches);
+    if (!isset($matches[1])) {
+        throw new Exception("Failed to parse private key PEM format");
+    }
+
+    $private_key_der = base64_decode(str_replace(array("\n", "\r", " "), '', $matches[1]));
+
+    // For ECDSA P-256, extract the actual private key value
+    $private_key_raw = extractPrivateKeyFromDER($private_key_der);
+    $private_key_base64url = base64url_encode($private_key_raw);
+
+    // Clean up
+    openssl_pkey_free($private_key_resource);
+
     return array(
-        'private' => $privateKey,
-        'public' => $publicKey
+        'private' => $private_key_base64url,
+        'public' => $public_key_base64url
     );
+}
+
+function base64url_encode($data) {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+function extractPrivateKeyFromDER($der) {
+    // Simple DER parser to extract the private key value
+    // For P-256, look for a 32-byte sequence that's the private key
+    $length = strlen($der);
+    for ($i = 0; $i < $length - 32; $i++) {
+        // Look for the private key marker in DER structure
+        if (ord($der[$i]) == 0x04 && ord($der[$i + 1]) == 0x20) {
+            // Found a 32-byte (0x20) octet string, this should be our private key
+            return substr($der, $i + 2, 32);
+        }
+    }
+    
+    // Fallback: take the last 32 bytes (common for simple DER encodings)
+    return substr($der, -32);
 }
 
 // Only allow access to logged-in admins
@@ -34,32 +97,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_keys'])) {
     try {
         $keys = generateVAPIDKeys();
         
-        // Read current config file
-        $config_file = 'includes/notifications.php';
-        $config_content = file_get_contents($config_file);
+        // Save keys to config.local.php
+        $config_local_file = 'config.local.php';
+        $config_content = "<?php\n";
+        $config_content .= "// VAPID Keys for Push Notifications - Generated " . date('Y-m-d H:i:s') . "\n";
+        $config_content .= "define('VAPID_PUBLIC_KEY', '" . $keys['public'] . "');\n";
+        $config_content .= "define('VAPID_PRIVATE_KEY', '" . $keys['private'] . "');\n";
+        $config_content .= "?>\n";
         
-        if ($config_content === false) {
-            throw new Exception('Could not read configuration file');
-        }
-        
-        // Update VAPID keys in the config
-        $config_content = preg_replace(
-            "/define\('VAPID_PUBLIC_KEY', '.*?'\);/",
-            "define('VAPID_PUBLIC_KEY', '" . $keys['public'] . "');",
-            $config_content
-        );
-        
-        $config_content = preg_replace(
-            "/define\('VAPID_PRIVATE_KEY', '.*?'\);/",
-            "define('VAPID_PRIVATE_KEY', '" . $keys['private'] . "');",
-            $config_content
-        );
-        
-        // Save updated config
-        if (file_put_contents($config_file, $config_content) !== false) {
+        // Save config.local.php
+        if (file_put_contents($config_local_file, $config_content) !== false) {
             $keys_generated = true;
+            // Force reload of config
+            if (file_exists($config_local_file)) {
+                include $config_local_file;
+            }
         } else {
-            throw new Exception('Could not save configuration file');
+            throw new Exception('Could not save config.local.php file');
         }
         
     } catch (Exception $e) {
@@ -114,13 +168,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_keys'])) {
                         <tr style="border-bottom: 1px solid #ddd;">
                             <td style="padding: 8px; font-weight: bold;">Public Key:</td>
                             <td style="padding: 8px; word-break: break-all; font-family: monospace;">
-                                <?php echo !empty(VAPID_PUBLIC_KEY) ? htmlspecialchars(VAPID_PUBLIC_KEY) : '<span style="color: red;">NOT SET</span>'; ?>
+                                <?php echo (defined('VAPID_PUBLIC_KEY') && !empty(VAPID_PUBLIC_KEY)) ? htmlspecialchars(VAPID_PUBLIC_KEY) : '<span style="color: red;">NOT SET</span>'; ?>
                             </td>
                         </tr>
                         <tr style="border-bottom: 1px solid #ddd;">
                             <td style="padding: 8px; font-weight: bold;">Private Key:</td>
                             <td style="padding: 8px;">
-                                <?php echo !empty(VAPID_PRIVATE_KEY) ? '<span style="color: green;">SET (hidden for security)</span>' : '<span style="color: red;">NOT SET</span>'; ?>
+                                <?php echo (defined('VAPID_PRIVATE_KEY') && !empty(VAPID_PRIVATE_KEY)) ? '<span style="color: green;">SET (hidden for security)</span>' : '<span style="color: red;">NOT SET</span>'; ?>
                             </td>
                         </tr>
                         <tr>

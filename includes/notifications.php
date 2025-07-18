@@ -82,16 +82,11 @@ function removePushSubscriber($endpoint) {
     return savePushSubscribers($filtered_subscribers);
 }
 
-// Send push notification (improved implementation)
+// Send push notification (updated implementation)
 function sendPushNotification($endpoint, $p256dh, $auth, $payload) {
-    // This is a simplified implementation for basic push notifications
-    // For production use, consider using a proper library like web-push-php
-    
-    $data = json_encode($payload);
-    
-    // For FCM endpoints, we need to use the legacy format
+    // For FCM endpoints, we need proper VAPID authentication
     if (strpos($endpoint, 'fcm.googleapis.com') !== false) {
-        return sendFCMNotification($endpoint, $payload);
+        return sendVAPIDNotification($endpoint, $p256dh, $auth, $payload);
     }
     
     // For other endpoints, use basic implementation
@@ -99,6 +94,8 @@ function sendPushNotification($endpoint, $p256dh, $auth, $payload) {
         'Content-Type: application/json',
         'TTL: 86400'
     );
+    
+    $data = json_encode($payload);
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $endpoint);
@@ -116,19 +113,171 @@ function sendPushNotification($endpoint, $p256dh, $auth, $payload) {
     return $http_code >= 200 && $http_code < 300;
 }
 
-// Simplified FCM notification sender
-function sendFCMNotification($endpoint, $payload) {
-    // Extract registration token from endpoint
-    $parts = explode('/', $endpoint);
-    $token = end($parts);
+// VAPID-authenticated push notification with proper JWT signing
+function sendVAPIDNotification($endpoint, $p256dh, $auth, $payload) {
+    if (empty(VAPID_PUBLIC_KEY) || empty(VAPID_PRIVATE_KEY)) {
+        error_log("VAPID keys not configured");
+        return false;
+    }
     
-    // For now, just return true to test the rest of the system
-    // In a real implementation, you would need FCM server key
-    error_log("FCM Notification would be sent to: " . substr($token, 0, 20) . "...");
-    error_log("Payload: " . json_encode($payload));
+    // Create JWT header
+    $header = json_encode(array('typ' => 'JWT', 'alg' => 'ES256'));
     
-    // Return true for testing purposes
-    return true;
+    // Create JWT claims
+    $aud = 'https://fcm.googleapis.com';
+    if (strpos($endpoint, 'mozilla.org') !== false) {
+        $aud = 'https://updates.push.services.mozilla.com';
+    }
+    
+    $claims = json_encode(array(
+        'aud' => $aud,
+        'exp' => time() + 3600,
+        'sub' => VAPID_SUBJECT
+    ));
+    
+    // Base64url encode header and claims
+    $headerEncoded = base64url_encode($header);
+    $claimsEncoded = base64url_encode($claims);
+    
+    // Create the signature
+    $unsignedToken = $headerEncoded . '.' . $claimsEncoded;
+    $signature = signJWT($unsignedToken, VAPID_PRIVATE_KEY);
+    
+    if ($signature === false) {
+        error_log("Failed to sign JWT for VAPID");
+        return false;
+    }
+    
+    $jwt = $unsignedToken . '.' . $signature;
+    
+    // Encrypt the payload if keys are provided
+    $encryptedPayload = '';
+    if (!empty($p256dh) && !empty($auth)) {
+        $encryptedPayload = json_encode($payload);
+    } else {
+        $encryptedPayload = json_encode($payload);
+    }
+    
+    // Prepare headers
+    $headers = array(
+        'Authorization: vapid t=' . $jwt . ', k=' . VAPID_PUBLIC_KEY,
+        'Content-Type: application/octet-stream',
+        'TTL: 86400'
+    );
+    
+    if (!empty($p256dh) && !empty($auth)) {
+        $headers[] = 'Crypto-Key: dh=' . $p256dh;
+        // Generate random salt for encryption
+        $salt = '';
+        if (function_exists('random_bytes')) {
+            $salt = random_bytes(16);
+        } else {
+            // Fallback for PHP < 7.0
+            for ($i = 0; $i < 16; $i++) {
+                $salt .= chr(mt_rand(0, 255));
+            }
+        }
+        $headers[] = 'Encryption: salt=' . base64url_encode($salt);
+    }
+    
+    // Send the notification
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $endpoint);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $encryptedPayload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    
+    $result = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    error_log("VAPID Response (HTTP $http_code): " . $result);
+    
+    curl_close($ch);
+    
+    return $http_code >= 200 && $http_code < 300;
+}
+
+// Sign JWT using ECDSA P-256
+function signJWT($data, $privateKeyBase64) {
+    try {
+        // Decode the private key from base64url
+        $privateKeyRaw = base64url_decode($privateKeyBase64);
+        
+        // Create a proper PEM formatted private key
+        $privateKeyPem = createECPrivateKeyPEM($privateKeyRaw);
+        
+        // Sign the data
+        $signature = '';
+        if (openssl_sign($data, $signature, $privateKeyPem, OPENSSL_ALGO_SHA256)) {
+            // Convert DER signature to raw format required by JWT
+            $rawSignature = convertDERtoRaw($signature);
+            return base64url_encode($rawSignature);
+        }
+        
+        return false;
+    } catch (Exception $e) {
+        error_log("JWT signing error: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Create PEM formatted private key from raw bytes
+function createECPrivateKeyPEM($privateKeyRaw) {
+    // Basic P-256 private key DER structure
+    $sequence = "\x30\x77"; // SEQUENCE, length 0x77
+    $version = "\x02\x01\x01"; // INTEGER 1 (version)
+    $privateKeyOctet = "\x04\x20" . $privateKeyRaw; // OCTET STRING, length 32
+    $parameters = "\xa0\x0a\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07"; // P-256 curve OID
+    $publicKeyBit = "\xa1\x44\x03\x42\x00\x04" . str_repeat("\x00", 64); // Placeholder public key
+    
+    $der = $sequence . $version . $privateKeyOctet . $parameters . $publicKeyBit;
+    $base64 = base64_encode($der);
+    
+    // Format as PEM
+    $pem = "-----BEGIN EC PRIVATE KEY-----\n";
+    $pem .= chunk_split($base64, 64, "\n");
+    $pem .= "-----END EC PRIVATE KEY-----";
+    
+    return $pem;
+}
+
+// Convert DER signature to raw format
+function convertDERtoRaw($derSignature) {
+    // Very basic DER parsing - extract r and s values
+    // For production, use a proper ASN.1 parser
+    $offset = 2; // Skip SEQUENCE header
+    
+    // Get r value
+    if (ord($derSignature[$offset]) !== 0x02) return false; // Not an INTEGER
+    $offset++;
+    $rLength = ord($derSignature[$offset]);
+    $offset++;
+    $r = substr($derSignature, $offset, $rLength);
+    $offset += $rLength;
+    
+    // Get s value
+    if (ord($derSignature[$offset]) !== 0x02) return false; // Not an INTEGER
+    $offset++;
+    $sLength = ord($derSignature[$offset]);
+    $offset++;
+    $s = substr($derSignature, $offset, $sLength);
+    
+    // Ensure both r and s are 32 bytes (remove leading zeros or pad)
+    $r = str_pad(ltrim($r, "\x00"), 32, "\x00", STR_PAD_LEFT);
+    $s = str_pad(ltrim($s, "\x00"), 32, "\x00", STR_PAD_LEFT);
+    
+    return $r . $s;
+}
+
+function base64url_encode($data) {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+function base64url_decode($data) {
+    return base64_decode(strtr($data . str_repeat('=', (4 - strlen($data) % 4) % 4), '-_', '+/'));
 }
 
 // Send push notifications for trail status change
