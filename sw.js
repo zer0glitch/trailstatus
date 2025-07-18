@@ -34,6 +34,8 @@ self.addEventListener('fetch', function(event) {
 
 // Push notification event
 self.addEventListener('push', function(event) {
+    console.log('Push event received:', event);
+    
     let notificationData = {
         title: 'Trail Status Update',
         body: 'A trail status has changed',
@@ -57,6 +59,7 @@ self.addEventListener('push', function(event) {
     if (event.data) {
         try {
             const data = event.data.json();
+            console.log('Push data received:', data);
             notificationData = {
                 ...notificationData,
                 ...data
