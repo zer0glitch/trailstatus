@@ -101,18 +101,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Invalid trail ID.';
         }
-    } elseif ($action === 'remove_subscriber') {
-        $subscriber_email = isset($_POST['subscriber_email']) ? trim($_POST['subscriber_email']) : '';
-        
-        if (!empty($subscriber_email)) {
-            if (removeSubscriber($subscriber_email)) {
-                $success = 'Subscriber removed successfully!';
-            } else {
-                $error = 'Failed to remove subscriber or subscriber not found.';
-            }
-        } else {
-            $error = 'Invalid subscriber email.';
-        }
     } elseif ($action === 'remove_push_subscriber') {
         $subscriber_endpoint = isset($_POST['subscriber_endpoint']) ? trim($_POST['subscriber_endpoint']) : '';
         
@@ -130,9 +118,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Load trails for display
 $trails = loadJsonData(TRAILS_FILE);
-
-// Load subscribers for management
-$subscribers = loadSubscribers();
 
 // Load push subscribers for management
 $push_subscribers = loadPushSubscribers();
@@ -276,83 +261,6 @@ $push_subscribers = loadPushSubscribers();
                         </button>
                     </form>
                 </div>
-            </div>
-
-            <!-- Notification Subscribers Management -->
-            <div class="admin-panel">
-                <div class="admin-header">
-                    <h2>Notification Subscribers</h2>
-                    <div style="font-size: 0.9rem; color: #666;">
-                        Total Subscribers: <?php echo count($subscribers); ?>
-                    </div>
-                </div>
-
-                <?php if (empty($subscribers)): ?>
-                    <p>No notification subscribers yet. Users can subscribe on the <a href="notifications.php">Notifications page</a>.</p>
-                <?php else: ?>
-                    <table class="trail-table">
-                        <thead>
-                            <tr>
-                                <th>Email</th>
-                                <th>Name</th>
-                                <th>Trail Preferences</th>
-                                <th>Subscribed Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($subscribers as $subscriber): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($subscriber['email']); ?></td>
-                                    <td><?php echo htmlspecialchars($subscriber['name'] ? $subscriber['name'] : 'N/A'); ?></td>
-                                    <td>
-                                        <?php 
-                                        if (in_array('all', $subscriber['trails'])) {
-                                            echo '<span style="color: #228B22; font-weight: bold;">All Trails</span>';
-                                        } else {
-                                            $trail_names = array();
-                                            foreach ($subscriber['trails'] as $trail_id) {
-                                                foreach ($trails as $trail) {
-                                                    if ($trail['id'] == $trail_id) {
-                                                        $trail_names[] = $trail['name'];
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                            echo htmlspecialchars(implode(', ', $trail_names));
-                                        }
-                                        ?>
-                                    </td>
-                                    <td><?php echo date('M j, Y', strtotime($subscriber['created_at'])); ?></td>
-                                    <td>
-                                        <span class="trail-status <?php echo $subscriber['active'] ? 'status-open' : 'status-closed'; ?>" style="font-size: 0.8rem; padding: 4px 12px;">
-                                            <?php echo $subscriber['active'] ? 'Active' : 'Inactive'; ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <form method="POST" action="admin.php" style="display: inline-block;" 
-                                              onsubmit="return confirm('Are you sure you want to remove this subscriber?');">
-                                            <input type="hidden" name="action" value="remove_subscriber">
-                                            <input type="hidden" name="subscriber_email" value="<?php echo htmlspecialchars($subscriber['email']); ?>">
-                                            <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;">Remove</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    
-                    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                        <h4 style="margin: 0 0 10px 0; color: #333;">Subscriber Management Tips:</h4>
-                        <ul style="margin: 0; padding-left: 20px; color: #666;">
-                            <li>Subscribers receive email notifications when trail statuses change</li>
-                            <li>Users can subscribe/unsubscribe on the <a href="notifications.php">Notifications page</a></li>
-                            <li>Removing a subscriber here will permanently delete their subscription</li>
-                            <li>Users can choose to receive notifications for all trails or specific trails</li>
-                        </ul>
-                    </div>
-                <?php endif; ?>
             </div>
 
             <!-- Push Notification Subscribers Management -->

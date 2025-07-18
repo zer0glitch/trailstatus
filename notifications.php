@@ -5,39 +5,6 @@ require_once 'includes/notifications.php';
 $message = '';
 $error = '';
 
-// Handle subscription form
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = isset($_POST['action']) ? $_POST['action'] : '';
-    
-    if ($action === 'subscribe' && ENABLE_EMAIL_SUBSCRIPTIONS) {
-        $email = isset($_POST['email']) ? trim($_POST['email']) : '';
-        $name = isset($_POST['name']) ? trim($_POST['name']) : '';
-        $selected_trails = isset($_POST['trails']) ? $_POST['trails'] : array('all');
-        
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Please enter a valid email address.';
-        } else {
-            if (addSubscriber($email, $name, $selected_trails)) {
-                $message = 'Successfully subscribed to trail status notifications!';
-            } else {
-                $error = 'This email address is already subscribed.';
-            }
-        }
-    } elseif ($action === 'unsubscribe' && ENABLE_EMAIL_SUBSCRIPTIONS) {
-        $email = isset($_POST['email']) ? trim($_POST['email']) : '';
-        
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Please enter a valid email address.';
-        } else {
-            if (removeSubscriber($email)) {
-                $message = 'Successfully unsubscribed from trail status notifications.';
-            } else {
-                $error = 'Email address not found in our subscription list.';
-            }
-        }
-    }
-}
-
 // Load trails for selection
 $trails = loadJsonData(TRAILS_FILE);
 ?>
@@ -117,90 +84,13 @@ $trails = loadJsonData(TRAILS_FILE);
             </div>
             <?php endif; ?>
 
-            <!-- Email Notifications Section -->
-            <?php if (ENABLE_EMAIL_SUBSCRIPTIONS): ?>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px;">
-                <!-- Subscribe Section -->
-                <div class="form-container">
-                    <h2 style="color: var(--ftf-primary);">📧 Email Notifications</h2>
-                    <p style="margin-bottom: 20px; color: var(--ftf-secondary);">Get email notifications when trail status changes.</p>
-                    
-                    <form method="POST" action="notifications.php">
-                        <input type="hidden" name="action" value="subscribe">
-                        
-                        <div class="form-group">
-                            <label for="email">Email Address:</label>
-                            <input type="email" id="email" name="email" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="name">Name (optional):</label>
-                            <input type="text" id="name" name="name">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Which trails to monitor:</label>
-                            <div style="margin-top: 10px;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: normal;">
-                                    <input type="checkbox" name="trails[]" value="all" checked style="margin-right: 8px;">
-                                    All Trails
-                                </label>
-                                <?php foreach ($trails as $trail): ?>
-                                    <label style="display: block; margin-bottom: 8px; font-weight: normal;">
-                                        <input type="checkbox" name="trails[]" value="<?php echo $trail['id']; ?>" style="margin-right: 8px;">
-                                        <?php echo htmlspecialchars($trail['name']); ?>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">Subscribe to Email</button>
-                    </form>
-                </div>
-
-                <!-- Unsubscribe Section -->
-                <div class="form-container">
-                    <h2 style="color: var(--ftf-primary);">🚫 Unsubscribe from Email</h2>
-                    <p style="margin-bottom: 20px; color: var(--ftf-secondary);">No longer want to receive email notifications?</p>
-                    
-                    <form method="POST" action="notifications.php">
-                        <input type="hidden" name="action" value="unsubscribe">
-                        
-                        <div class="form-group">
-                            <label for="unsubscribe_email">Email Address:</label>
-                            <input type="email" id="unsubscribe_email" name="email" required>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-danger" style="width: 100%;">Unsubscribe from Email</button>
-                    </form>
-                </div>
-            </div>
-            <?php else: ?>
-            <!-- Email Notifications Disabled Message -->
-            <div class="form-container" style="margin-bottom: 30px;">
-                <h2 style="color: var(--ftf-primary);">📧 Email Notifications</h2>
-                <div style="background: #fff3e0; color: #f57c00; padding: 20px; border-radius: 8px; border-left: 4px solid #ff9800;">
-                    <h4 style="margin: 0 0 10px 0;">Email Notifications Temporarily Unavailable</h4>
-                    <p style="margin: 0;">We're currently setting up our email server to ensure reliable delivery. Email notifications will be available soon!</p>
-                    <p style="margin: 10px 0 0 0;"><strong>Alternative:</strong> Use push notifications above for instant trail status updates.</p>
-                </div>
-            </div>
-            <?php endif; ?>
-
             <!-- Information Section -->
             <div class="form-container" style="margin-top: 30px;">
                 <h3 style="color: var(--ftf-primary);">📋 About Notifications</h3>
                 <div style="color: var(--ftf-secondary); line-height: 1.6;">
                     <ul style="margin-left: 20px;">
-                        <?php if (ENABLE_PUSH_NOTIFICATIONS): ?>
                         <li><strong>Push Notifications:</strong> Instant alerts directly to your device</li>
                         <li><strong>Works Offline:</strong> Notifications appear even when the browser is closed</li>
-                        <?php endif; ?>
-                        <?php if (ENABLE_EMAIL_SUBSCRIPTIONS): ?>
-                        <li><strong>Email Notifications:</strong> Detailed updates sent to your inbox</li>
-                        <li><strong>Choose Your Trails:</strong> Subscribe to all trails or select specific ones</li>
-                        <li><strong>Easy Unsubscribe:</strong> One-click unsubscribe from any notification email</li>
-                        <?php endif; ?>
                         <li><strong>Real-time Updates:</strong> Get notified immediately when trail status changes</li>
                         <li><strong>Privacy:</strong> Your information is only used for trail status notifications</li>
                     </ul>
