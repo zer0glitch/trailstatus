@@ -8,9 +8,16 @@
 define('ENABLE_NOTIFICATIONS', true);
 define('ENABLE_PUSH_NOTIFICATIONS', true);
 
-// Push Notification Configuration
-define('VAPID_PUBLIC_KEY', '');  // Will be generated
-define('VAPID_PRIVATE_KEY', ''); // Will be generated
+// Load local configuration for VAPID keys
+if (file_exists(dirname(__DIR__) . '/config.local.php')) {
+    require_once dirname(__DIR__) . '/config.local.php';
+} else {
+    // Default empty keys - update config.local.php with actual keys
+    define('VAPID_PUBLIC_KEY', '');
+    define('VAPID_PRIVATE_KEY', '');
+}
+
+// VAPID Subject
 define('VAPID_SUBJECT', 'mailto:noreply@zeroglitch.com');
 
 // Push Notification Functions

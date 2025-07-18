@@ -221,28 +221,6 @@ $trails = loadJsonData(TRAILS_FILE);
             return outputArray;
         }
         <?php endif; ?>
-
-        // Handle "All Trails" checkbox for email subscriptions
-        <?php if (ENABLE_EMAIL_SUBSCRIPTIONS): ?>
-        const allTrailsCheckbox = document.querySelector('input[value="all"]');
-        if (allTrailsCheckbox) {
-            allTrailsCheckbox.addEventListener('change', function() {
-                const otherCheckboxes = document.querySelectorAll('input[name="trails[]"]:not([value="all"])');
-                if (this.checked) {
-                    otherCheckboxes.forEach(cb => cb.checked = false);
-                }
-            });
-
-            // Handle individual trail checkboxes
-            document.querySelectorAll('input[name="trails[]"]:not([value="all"])').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        document.querySelector('input[value="all"]').checked = false;
-                    }
-                });
-            });
-        }
-        <?php endif; ?>
     </script>
 </body>
 </html>
