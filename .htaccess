@@ -1,2 +1,41 @@
+# LCFTF Trail Status - Cache Control Configuration
+# Prevents caching of dynamic content while allowing static assets to be cached appropriately
+
 # Ultra-minimal .htaccess for very restricted Apache environments
 #Options -Indexes
+
+# Prevent caching of PHP files and API endpoints
+<FilesMatch "\.(php)$">
+    Header always set Cache-Control "no-cache, no-store, must-revalidate"
+    Header always set Pragma "no-cache"
+    Header always set Expires "0"
+</FilesMatch>
+
+# Cache CSS and JS files for 1 hour (since we use cache-busting parameters)
+<FilesMatch "\.(css|js)$">
+    Header always set Cache-Control "public, max-age=3600"
+</FilesMatch>
+
+# Cache images for 1 day
+<FilesMatch "\.(jpg|jpeg|png|gif|ico|svg)$">
+    Header always set Cache-Control "public, max-age=86400"
+</FilesMatch>
+
+# Prevent caching of JSON data files
+<FilesMatch "\.(json)$">
+    Header always set Cache-Control "no-cache, no-store, must-revalidate"
+    Header always set Pragma "no-cache"
+    Header always set Expires "0"
+</FilesMatch>
+
+# Service Worker should not be cached
+<FilesMatch "sw\.js$">
+    Header always set Cache-Control "no-cache, no-store, must-revalidate"
+    Header always set Pragma "no-cache"
+    Header always set Expires "0"
+</FilesMatch>
+
+# Security headers
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "DENY"
+Header always set X-XSS-Protection "1; mode=block"

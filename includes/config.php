@@ -146,6 +146,24 @@ function logout(): void {
     exit;
 }
 
+/**
+ * Send cache control headers to prevent caching
+ * Ensures users get fresh data on every request
+ */
+function preventCaching(): void {
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+}
+
+/**
+ * Get cache-busting query parameter for assets
+ * Uses timestamp to ensure fresh CSS/JS on updates
+ */
+function getCacheBuster(): string {
+    return '?v=' . time();
+}
+
 // Load local configuration (VAPID keys, etc.)
 $config_local_file = dirname(__DIR__) . '/config.local.php';
 if (file_exists($config_local_file)) {

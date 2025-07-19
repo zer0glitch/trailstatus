@@ -2,6 +2,9 @@
 require_once 'includes/config.php';
 require_once 'includes/notifications.php';
 
+// Prevent caching to ensure fresh notification status
+preventCaching();
+
 $message = '';
 $error = '';
 
@@ -14,7 +17,7 @@ $trails = loadJsonData(TRAILS_FILE);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trail Status Notifications - LCFTF</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css<?php echo getCacheBuster(); ?>">
 </head>
 <body>
     <div class="container">

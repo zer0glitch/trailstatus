@@ -1,7 +1,7 @@
 // Service Worker for Push Notifications
 // LCFTF Trail Status App
 
-const CACHE_NAME = 'lcftf-trail-status-v1';
+const CACHE_NAME = 'lcftf-trail-status-v' + Date.now(); // Dynamic cache versioning
 const urlsToCache = [
     './index.php',
     './css/style.css',

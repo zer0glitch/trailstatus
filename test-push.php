@@ -7,6 +7,9 @@
 require_once 'includes/config.php';
 require_once 'includes/notifications.php';
 
+// Prevent caching to ensure fresh test results
+preventCaching();
+
 echo "Testing Push Notifications...\n\n";
 
 // Load push subscribers

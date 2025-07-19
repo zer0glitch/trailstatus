@@ -3,20 +3,27 @@ declare(strict_types=1);
 /**
  * Modern Push Notification System for Trail Status Changes
  * PHP 8.0+ compatible with proper error handling and security
+ * Supports both legacy VAPID and modern FCM V1 API
  */
 
 // Notification configuration
 const ENABLE_NOTIFICATIONS = true;
 const ENABLE_PUSH_NOTIFICATIONS = true;
-const VAPID_SUBJECT = 'mailto:noreply@zeroglitch.com';
+const VAPID_SUBJECT = 'https://zeroglitch.com/trailstatus';
 
-// Load local configuration for VAPID keys
+// Load local configuration for VAPID keys and FCM
 if (file_exists(dirname(__DIR__) . '/config.local.php')) {
     require_once dirname(__DIR__) . '/config.local.php';
 } else {
     // Default empty keys - update config.local.php with actual keys
     if (!defined('VAPID_PUBLIC_KEY')) define('VAPID_PUBLIC_KEY', '');
     if (!defined('VAPID_PRIVATE_KEY')) define('VAPID_PRIVATE_KEY', '');
+}
+
+// Load FCM V1 API if available
+$fcm_v1_available = defined('FCM_PROJECT_ID') && defined('FCM_SERVICE_ACCOUNT_PATH') && file_exists(FCM_SERVICE_ACCOUNT_PATH);
+if ($fcm_v1_available) {
+    require_once __DIR__ . '/fcm-v1-notifications.php';
 }
 
 /**
@@ -85,6 +92,8 @@ function removePushSubscriber(string $endpoint): bool {
 
 // Main push notification sender with proper error handling
 function sendPushNotification(string $endpoint, string $p256dh, string $auth, array $payload): bool {
+    global $fcm_v1_available;
+    
     try {
         // Validate inputs
         if (empty($endpoint) || empty($payload)) {
@@ -92,14 +101,24 @@ function sendPushNotification(string $endpoint, string $p256dh, string $auth, ar
             return false;
         }
         
-        // Check if VAPID keys are configured
-        if (empty(VAPID_PUBLIC_KEY) || empty(VAPID_PRIVATE_KEY)) {
-            error_log("VAPID keys not configured for push notifications");
-            return false;
+        // Route to appropriate push service based on endpoint
+        if (strpos($endpoint, 'fcm.googleapis.com') !== false) {
+            // FCM endpoints - use FCM V1 API if available
+            if ($fcm_v1_available) {
+                return sendFcmV1PushNotification($endpoint, $p256dh, $auth, $payload);
+            } else {
+                error_log("FCM endpoint detected but FCM V1 API not available");
+                return false;
+            }
+        } else {
+            // Non-FCM endpoints (Mozilla, Safari, Edge, etc.) - use VAPID/Web Push
+            if (empty(VAPID_PUBLIC_KEY) || empty(VAPID_PRIVATE_KEY)) {
+                error_log("VAPID keys not configured for Web Push notifications");
+                return false;
+            }
+            
+            return sendVAPIDNotification($endpoint, $p256dh, $auth, $payload);
         }
-        
-        // Use VAPID authentication for all modern push services
-        return sendVAPIDNotification($endpoint, $p256dh, $auth, $payload);
         
     } catch (Exception $e) {
         error_log("Push notification error: " . $e->getMessage());
@@ -130,8 +149,11 @@ function sendVAPIDNotification(string $endpoint, string $p256dh, string $auth, a
         
         // If encryption keys are provided, add encryption headers
         if (!empty($p256dh) && !empty($auth)) {
-            $headers[] = 'Crypto-Key: dh=' . $p256dh;
+            $headers[] = 'Crypto-Key: dh=' . $p256dh . ';p256ecdsa=' . VAPID_PUBLIC_KEY;
             $headers[] = 'Encryption: salt=' . base64url_encode(random_bytes(16));
+        } else {
+            // Even without encryption, FCM requires the public key in Crypto-Key header
+            $headers[] = 'Crypto-Key: p256ecdsa=' . VAPID_PUBLIC_KEY;
         }
         
         // Send the notification
@@ -157,9 +179,23 @@ function sendVAPIDNotification(string $endpoint, string $p256dh, string $auth, a
             return false;
         }
         
+        // Debug: Log the full request details
+        error_log("Push notification debug:");
+        error_log("- Endpoint: " . $endpoint);
+        error_log("- HTTP Code: " . $http_code);
+        error_log("- JWT: " . substr($jwt, 0, 50) . "..." . substr($jwt, -20));
+        error_log("- Payload: " . $payloadJson);
+        error_log("- Response: " . ($result ?: 'empty'));
+        error_log("- Headers sent: " . implode("; ", $headers));
+        
         // Log response for debugging
         if ($http_code < 200 || $http_code >= 300) {
-            error_log("Push notification failed (HTTP $http_code): " . $result);
+            $errorMsg = "Push notification failed (HTTP $http_code)";
+            if ($result) {
+                $errorMsg .= ": " . $result;
+            }
+            error_log($errorMsg);
+            echo $errorMsg . "\n";
             return false;
         }
         
@@ -175,12 +211,18 @@ function sendVAPIDNotification(string $endpoint, string $p256dh, string $auth, a
 function createVAPIDJWT(string $endpoint): string|false {
     try {
         // Determine audience based on endpoint
-        $aud = 'https://fcm.googleapis.com';
-        if (str_contains($endpoint, 'mozilla.org')) {
+        $aud = 'https://fcm.googleapis.com'; // Default for FCM
+        
+        if (strpos($endpoint, 'mozilla.com') !== false) {
             $aud = 'https://updates.push.services.mozilla.com';
-        } elseif (str_contains($endpoint, 'windows.com')) {
+        } elseif (strpos($endpoint, 'windows.com') !== false || strpos($endpoint, 'microsoft.com') !== false) {
             $aud = 'https://login.microsoftonline.com';
+        } elseif (strpos($endpoint, 'apple.com') !== false) {
+            // Safari push notifications would go here
+            $aud = 'https://api.push.apple.com';
         }
+        
+        error_log("VAPID JWT: Using audience: " . $aud . " for endpoint: " . substr($endpoint, 0, 50) . "...");
         
         // Create JWT header
         $header = json_encode(['typ' => 'JWT', 'alg' => 'ES256'], JSON_THROW_ON_ERROR);
@@ -215,18 +257,109 @@ function createVAPIDJWT(string $endpoint): string|false {
 // Sign JWT using the VAPID private key
 function signVAPIDJWT(string $data): string|false {
     try {
-        // For now, return a simple signature placeholder
-        // In production, you'd want to use proper ECDSA P-256 signing
-        // This requires either the web-push-php library or OpenSSL with proper key handling
+        // Decode the VAPID private key from base64url
+        $privateKeyRaw = base64url_decode(VAPID_PRIVATE_KEY);
         
-        // Simplified approach for compatibility
-        $hash = hash_hmac('sha256', $data, VAPID_PRIVATE_KEY, true);
-        return base64url_encode($hash);
+        if (strlen($privateKeyRaw) !== 32) {
+            error_log("Invalid VAPID private key length: " . strlen($privateKeyRaw));
+            return false;
+        }
+        
+        // Create hash of the data to sign
+        $hash = hash('sha256', $data, true);
+        
+        // Use OpenSSL to sign with ECDSA P-256
+        // First, we need to create a proper OpenSSL private key resource
+        $privateKeyPem = createP256PrivateKeyPEM($privateKeyRaw);
+        if (!$privateKeyPem) {
+            error_log("Failed to create private key PEM");
+            return false;
+        }
+        
+        $privateKeyResource = openssl_pkey_get_private($privateKeyPem);
+        if (!$privateKeyResource) {
+            error_log("Failed to load private key: " . openssl_error_string());
+            return false;
+        }
+        
+        // Sign the hash with ECDSA
+        $signature = '';
+        if (!openssl_sign($hash, $signature, $privateKeyResource, OPENSSL_ALGO_SHA256)) {
+            error_log("Failed to sign JWT: " . openssl_error_string());
+            openssl_free_key($privateKeyResource);
+            return false;
+        }
+        
+        openssl_free_key($privateKeyResource);
+        
+        // Convert DER signature to raw format (64 bytes for P-256)
+        $rawSignature = convertDERSignatureToRaw($signature);
+        if (!$rawSignature) {
+            error_log("Failed to convert signature to raw format");
+            return false;
+        }
+        
+        return base64url_encode($rawSignature);
         
     } catch (Exception $e) {
         error_log("JWT signing error: " . $e->getMessage());
         return false;
     }
+}
+
+// Helper function to create a PEM private key from raw bytes
+function createP256PrivateKeyPEM(string $privateKeyRaw): string|false {
+    // This is a simplified approach - create an EC private key structure
+    // For production, you'd want to use a proper crypto library
+    
+    // P-256 private key DER structure template
+    $template = hex2bin('3041020100301306072a8648ce3d020106082a8648ce3d030107042730250201010420') 
+              . $privateKeyRaw 
+              . hex2bin('a00a06082a8648ce3d030107');
+    
+    $pem = "-----BEGIN EC PRIVATE KEY-----\n";
+    $pem .= chunk_split(base64_encode($template), 64, "\n");
+    $pem .= "-----END EC PRIVATE KEY-----\n";
+    
+    return $pem;
+}
+
+// Convert DER signature to raw 64-byte format for VAPID
+function convertDERSignatureToRaw(string $derSignature): string|false {
+    // Parse DER signature structure to extract r and s values
+    // This is simplified - for production use a proper ASN.1 parser
+    
+    if (strlen($derSignature) < 8) {
+        return false;
+    }
+    
+    // Skip SEQUENCE tag and length
+    $offset = 2;
+    
+    // Extract r value
+    if (ord($derSignature[$offset]) !== 0x02) { // INTEGER tag
+        return false;
+    }
+    $offset++;
+    $rLength = ord($derSignature[$offset]);
+    $offset++;
+    $r = substr($derSignature, $offset, $rLength);
+    $offset += $rLength;
+    
+    // Extract s value  
+    if (ord($derSignature[$offset]) !== 0x02) { // INTEGER tag
+        return false;
+    }
+    $offset++;
+    $sLength = ord($derSignature[$offset]);
+    $offset++;
+    $s = substr($derSignature, $offset, $sLength);
+    
+    // Pad r and s to 32 bytes each
+    $r = str_pad(ltrim($r, "\x00"), 32, "\x00", STR_PAD_LEFT);
+    $s = str_pad(ltrim($s, "\x00"), 32, "\x00", STR_PAD_LEFT);
+    
+    return $r . $s;
 }
 
 // Base64url encoding functions
