@@ -7,9 +7,6 @@
 require_once 'includes/config.php';
 require_once 'includes/notifications.php';
 
-// Prevent caching for subscription API responses
-preventCaching();
-
 // Set JSON response header
 header('Content-Type: application/json');
 

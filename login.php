@@ -1,9 +1,6 @@
 <?php
 require_once 'includes/config.php';
 
-// Prevent caching to ensure fresh login status
-preventCaching();
-
 $error = '';
 $success = '';
 
@@ -36,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - LCFTF Trail Status</title>
-    <link rel="stylesheet" href="css/style.css<?php echo getCacheBuster(); ?>">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
